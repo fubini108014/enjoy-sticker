@@ -1,0 +1,48 @@
+name: Deploy sticker studio to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototype/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Check JavaScript syntax
+        run: |
+          node --check prototype/app.js
+          node --check prototype/product.js
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          cp prototype/index.html prototype/styles.css prototype/app.js prototype/product.js _site/
+          touch _site/.nojekyll
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

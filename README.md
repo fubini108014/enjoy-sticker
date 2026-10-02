@@ -33,3 +33,13 @@ node prototype/server.cjs
 原型新增背景比較、指定份數與同圖排滿、30 天同裝置自動存稿、印製檢查、配送總價、獨立設計快照、重新編輯與工坊異常狀態示範。所有訂單保存在瀏覽器，不會付款、退款或寄件。尚未串接 AI 去背、HEIC 轉換、正式印刷 PDF/SVG/DXF、帳號、金流、物流與正式訂單服務。畫布白邊與對位記號只用於視覺預覽，不能作為正式印刷或裁切檔。示範定價為每張 A4 NT$200，超商運費 NT$60／郵局 NT$40；確認頁展示含運費總額，費率僅供原型使用。
 
 中文字體使用 Noto Sans TC，品牌與數字使用 Outfit，由 Google Fonts 載入；離線時使用本機 sans-serif 字體。
+
+## GitHub Pages 部署
+
+預定網站網址：<https://fubini108014.github.io/enjoy-sticker/>。
+
+部署流程在 `.github/workflows/pages.yml`。修改 `prototype/` 或部署設定並推送到 `main` 後，自動檢查 JavaScript、打包並發布；亦可在 Actions 手動執行。
+
+首次啟用需在 GitHub 儲存庫 Settings → Pages → Build and deployment，將 Source 設為 **GitHub Actions**。部署結果可在 Actions 的 **Deploy sticker studio to GitHub Pages** 查看；只有 workflow 成功並確認網站可讀取後，才視為發布完成。
+
+發布內容僅包含原型的 HTML、CSS 與兩份前端 JavaScript；本機伺服器、規格書與預覽截圖不會加入網站發布包。正式 API、金流、物流與印刷服務尚未提供；草稿與示範訂單存在訪客自己的瀏覽器。不同網站來源的本機草稿不會互相同步。
