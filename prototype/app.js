@@ -13,19 +13,46 @@ let items=[], selected=null, history=[], future=[];
 let sequence=0, toastTimer;
 const initialPositions=[[28,27],[112,26],[103,100],[25,115],[30,198],[109,200]];
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
-function makeItem(asset,index=0){const w=asset.ratio>1?54:48;return {id:++sequence,...asset,w,border:2,x:initialPositions[index%6][0],y:initialPositions[index%6][1],rotation:[-12,10,7,-8,-8,12][index%6]};}
+function makeItem(asset,index=0){const w=50;return {id:++sequence,...asset,w,border:2,x:initialPositions[index%6][0],y:initialPositions[index%6][1],rotation:[-12,10,7,-8,-8,12][index%6]};}
 function snapshot(){history.push(JSON.stringify(items));if(history.length>30)history.shift();future=[];}
 function notify(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3200);}
 function outline(mm){const px=mm*$('paper').clientWidth/210;return [[px,0],[-px,0],[0,px],[0,-px],[px*.7,px*.7],[-px*.7,px*.7],[px*.7,-px*.7],[-px*.7,-px*.7]].map(([x,y])=>`drop-shadow(${x}px ${y}px 0 white)`).join(' ');}
 function selectedItem(){return items.find(i=>i.id===selected);}
 function render(){
- $('stickers').replaceChildren();
- for(const item of items){const el=document.createElement('div');el.setAttribute('role','button');el.tabIndex=0;el.className='sticker'+(selected===item.id?' selected':'');el.dataset.id=item.id;el.setAttribute('aria-label',`編輯${item.name}`);el.style.cssText=`left:${item.x/210*100}%;top:${item.y/297*100}%;width:${item.w/210*100}%;height:${(item.w/item.ratio)/297*100}%;transform:rotate(${item.rotation}deg);--outline:${outline(item.border)}`;const img=document.createElement('img');img.src=item.src;img.alt='';img.draggable=false;el.append(img);el.addEventListener('pointerdown',e=>startDrag(e,item,el));el.addEventListener('click',()=>{selected=item.id;render();});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selected=item.id;render();return;}const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(moves[e.key]){e.preventDefault();snapshot();moveItem(item,item.x+moves[e.key][0],item.y+moves[e.key][1]);selected=item.id;render();document.querySelector(`[data-id="${item.id}"]`)?.focus();}});$('stickers').append(el);}
+ const container=$('stickers');
+ const ids=new Set(items.map(item=>String(item.id)));
+ for(const node of [...container.children])if(!ids.has(node.dataset.id))node.remove();
+ for(const item of items){
+  let element=container.querySelector(`[data-id="${item.id}"]`);
+  if(!element){
+   element=document.createElement('div');element.className='sticker';element.dataset.id=item.id;element.setAttribute('role','button');element.tabIndex=0;
+   const image=document.createElement('img');image.alt='';image.draggable=false;element.append(image);
+   element.addEventListener('pointerdown',event=>{const current=items.find(i=>String(i.id)===element.dataset.id);if(current)startDrag(event,current,element);});
+   element.addEventListener('click',()=>{selected=Number(element.dataset.id);render();});
+   element.addEventListener('keydown',event=>{
+    const current=items.find(i=>String(i.id)===element.dataset.id);if(!current)return;
+    if(event.key==='Enter'||event.key===' '){event.preventDefault();selected=current.id;render();return;}
+    const directions={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
+    if(directions[event.key]){event.preventDefault();snapshot();moveItem(current,current.x+directions[event.key][0],current.y+directions[event.key][1]);selected=current.id;render();element.focus();}
+   });
+   container.append(element);
+  }
+  element.classList.toggle('selected',selected===item.id);element.setAttribute('aria-label',`編輯${item.name}`);
+  const style=`left:${item.x/210*100}%;top:${item.y/297*100}%;width:${item.w/210*100}%;height:${item.w/item.ratio/297*100}%;transform:rotate(${item.rotation}deg);--outline:${outline(item.border)}`;
+  if(element.dataset.layout!==style){element.style.cssText=style;element.dataset.layout=style;}
+  const image=element.querySelector('img');if(image.getAttribute('src')!==item.src)image.src=item.src;
+ }
  $('layout-status').textContent=`已放入 ${items.length} 張貼紙`;
  $('undo').disabled=!history.length;$('redo').disabled=!future.length;
- const item=selectedItem();$('selected-preview').replaceChildren();
- if(item){const image=document.createElement('img');image.src=item.src;image.alt=item.name;$('selected-preview').append(image);$('selected-name').textContent=item.name;$('width').value=item.w;$('border').value=item.border;$('border-value').textContent=item.border.toFixed(1)+' mm';const dpi=item.pixels?Math.round(item.pixels/(item.w/25.4)):null;const badge=$('dpi-badge');badge.textContent=dpi?`${dpi} DPI ${dpi>=300?'清晰':dpi>=150?'普通':'偏低'}`:'向量素材';badge.className='quality'+(dpi&&dpi<150?' bad':dpi&&dpi<300?' warn':'');}
- else{$('selected-name').textContent='點選畫布上的貼紙';$('dpi-badge').textContent='';}
+ const item=selectedItem();const preview=$('selected-preview');
+ if(item){
+  let image=preview.querySelector('img');if(!image){image=document.createElement('img');preview.append(image);}
+  if(image.getAttribute('src')!==item.src)image.src=item.src;image.alt=item.name;
+  $('selected-name').textContent=item.name;$('width').value=item.w;$('border').value=item.border;$('border-value').textContent=item.border.toFixed(1)+' mm';
+  const dpi=item.pixels?Math.round(item.pixels/(item.w/25.4)):null;
+  $('dpi-badge').textContent=dpi?`${dpi} DPI ${dpi>=300?'清晰':dpi>=150?'普通':'偏低'}`:'向量素材';
+  $('dpi-badge').className='quality'+(dpi&&dpi<150?' bad':dpi&&dpi<300?' warn':'');
+ }else{preview.replaceChildren();$('selected-name').textContent='點選畫布上的貼紙';$('dpi-badge').textContent='';}
  for(const id of ['width','border','duplicate','delete'])$(id).disabled=!item;
  updatePrice();
 }
@@ -50,5 +77,5 @@ $('save').onclick=()=>{try{localStorage.setItem('enjoy-sticker-draft',JSON.strin
 function modal(html){$('modal-content').innerHTML=html;$('modal').showModal();}$('close-modal').onclick=()=>$('modal').close();$('modal').addEventListener('click',e=>{if(e.target===$('modal')){const r=$('modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('modal').close();}});
 $('guide').onclick=()=>modal('<span class="modal-icon">✦</span><h2>一張貼紙板，這樣做</h2><ol><li>上傳照片，或點選示範素材。</li><li>拖曳貼紙，調整尺寸與白邊。</li><li>用自動排版，將貼紙放入安全區。</li><li>選擇表面觸感與印製張數。</li></ol><p>此原型的上傳照片會保留原背景。AI 去背與正式訂製服務將於後續開發。</p>');
 $('checkout').onclick=()=>{if(!items.length){notify('先加入一張貼紙，再確認貼紙板。');return;}const low=items.filter(i=>i.pixels&&i.pixels/(i.w/25.4)<150).length;const finish=document.querySelector('[name="finish"]:checked').value==='matte'?'霧面':'亮面';modal(`<span class="modal-icon">✧</span><h2>你的貼紙板，準備好了。</h2><div class="summary">A4 白底防水貼紙 · ${finish}<br>${items.length} 個圖案 · ${$('quantity').value} 張<br>商品小計 NT$ ${$('price').textContent}</div>${low?`<p>${low} 張圖片低於 150 DPI，印製可能模糊，建議更換較清晰的圖片。</p>`:''}<p>這是訂製確認的介面預覽，目前尚未提供付款、運費計算或建立訂單。</p><button class="button primary" id="back-edit">返回繼續編輯</button>`);$('back-edit').onclick=()=>$('modal').close();};
-try{const saved=JSON.parse(localStorage.getItem('enjoy-sticker-draft'));if(saved&&Array.isArray(saved.items)&&saved.items.length<=40&&saved.items.every(i=>Number.isFinite(i.id)&&Number.isFinite(i.w)&&i.w>=15&&i.w<=100&&Number.isFinite(i.x)&&Number.isFinite(i.y)&&Number.isFinite(i.ratio)&&i.ratio>=.25&&i.ratio<=4&&typeof i.src==='string'&&/^data:image\/(svg\+xml|png|jpeg|webp)[;,]/.test(i.src))){items=saved.items;sequence=Math.max(0,...items.map(i=>i.id));$('quantity').value=saved.quantity||1;const finish=document.querySelector(`[name="finish"][value="${saved.finish==='glossy'?'glossy':'matte'}"]`);finish.checked=true;for(const item of items){if(!assets.some(a=>a.src===item.src))assets.push({name:item.name,src:item.src,ratio:item.ratio,pixels:item.pixels});}}else items=assets.map(makeItem);}catch{items=assets.map(makeItem);}
+try{const saved=JSON.parse(localStorage.getItem('enjoy-sticker-draft'));if(saved&&Array.isArray(saved.items)&&saved.items.length<=40&&saved.items.every(i=>Number.isFinite(i.id)&&Number.isFinite(i.w)&&i.w>=15&&i.w<=100&&Number.isFinite(i.x)&&Number.isFinite(i.y)&&Number.isFinite(i.ratio)&&i.ratio>=.25&&i.ratio<=4&&typeof i.src==='string'&&/^data:image\/(svg\+xml|png|jpeg|webp)[;,]/.test(i.src))){items=saved.items;sequence=Math.max(0,...items.map(i=>i.id));$('quantity').value=saved.quantity||1;const finish=document.querySelector(`[name="finish"][value="${saved.finish==='glossy'?'glossy':'matte'}"]`);finish.checked=true;for(const item of items){if(!assets.some(a=>a.src===item.src))assets.push({name:item.name,src:item.src,ratio:item.ratio,pixels:item.pixels});}}else items=[];}catch{items=[];}
 selected=items[0]?.id??null;renderAssets();render();new ResizeObserver(()=>render()).observe($('paper'));

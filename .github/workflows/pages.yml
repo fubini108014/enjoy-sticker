@@ -32,10 +32,12 @@ jobs:
         run: |
           node --check prototype/app.js
           node --check prototype/product.js
+          node --check prototype/storage.js
+          node --check prototype/experience.js
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp prototype/index.html prototype/styles.css prototype/app.js prototype/product.js _site/
+          cp prototype/index.html prototype/styles.css prototype/app.js prototype/product.js prototype/storage.js prototype/experience.js _site/
           touch _site/.nojekyll
       - name: Configure Pages
         uses: actions/configure-pages@v5
